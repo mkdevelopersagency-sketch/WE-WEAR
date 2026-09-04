@@ -706,7 +706,8 @@
     <div class="nav-container">
         <div class="logo" onclick="goToPage('home')">WE WEAR</div>
         <div class="nav-buttons">
-            <button class="nav-btn active" onclick="goToPage('shirts')" data-page="shirts">Shirts</button>
+            <button class="nav-btn active" onclick="goToPage('inventory')" data-page="inventory">Inventory</button>
+            <button class="nav-btn" onclick="goToPage('shirts')" data-page="shirts">Shirts</button>
             <button class="nav-btn" onclick="goToPage('pants')" data-page="pants">Pants</button>
             <button class="nav-btn" onclick="goToPage('shoes')" data-page="shoes">Shoes</button>
             <button class="nav-btn" onclick="goToPage('drips')" data-page="drips">Drips</button>
@@ -714,6 +715,26 @@
         </div>
     </div>
 </nav>
+
+<!-- INVENTORY PAGE - HOMEPAGE -->
+<div id="inventoryPage" class="page active">
+    <div class="page-container">
+        <h1>All Products</h1>
+        <p style="font-size: 14px; color: #666; margin-bottom: 30px;">Available Products from All Categories</p>
+        <div id="inventoryGrid" class="product-grid"></div>
+    </div>
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4>WE WEAR</h4>
+                <p>Pre-loved. Re-styled. Yours.</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2024 WE WEAR. All rights reserved.</p>
+        </div>
+    </footer>
+</div>
 
 <!-- SHIRTS PAGE -->
 <div id="shirtsPage" class="page active">
@@ -899,8 +920,16 @@
                                 </div>
 
                                 <div class="form-group-full">
-                                    <label>Image URL *</label>
-                                    <input type="text" id="productImage" placeholder="https://example.com/image.jpg" required>
+                                    <label>Product Image *</label>
+                                    <div id="dragDropArea" style="border: 2px dashed #ccc; padding: 40px; text-align: center; border-radius: 8px; cursor: pointer; background: #fafafa; transition: all 0.3s;" ondragover="dragOver(event)" ondrop="dropImage(event)" ondragleave="dragLeave(event)" onclick="document.getElementById('imageInput').click()">
+                                        <p style="margin: 0; color: #666; font-size: 14px;">Drag & Drop Image Here</p>
+                                        <p style="margin: 8px 0 0 0; color: #999; font-size: 12px;">or Click to Browse</p>
+                                    </div>
+                                    <input type="file" id="imageInput" style="display: none;" accept="image/*" onchange="handleImageSelect(event)">
+                                    <div id="imagePreview" style="margin-top: 16px; display: none;">
+                                        <img id="previewImg" src="" alt="preview" style="max-width: 200px; max-height: 200px; border-radius: 8px;">
+                                    </div>
+                                    <input type="hidden" id="productImage">
                                 </div>
 
                                 <button type="submit" class="btn-primary">Publish Product</button>
@@ -963,6 +992,7 @@
     // Initialize
     function init() {
         displayAllProducts();
+        displayInventoryPage();
         updateDashboard();
     }
 
@@ -974,7 +1004,9 @@
         document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
         document.querySelector(`[data-page="${page}"]`).classList.add('active');
 
-        if (page === 'shirts' || page === 'pants' || page === 'shoes' || page === 'drips') {
+        if (page === 'inventory') {
+            displayInventoryPage();
+        } else if (page === 'shirts' || page === 'pants' || page === 'shoes' || page === 'drips') {
             displayProductsByCategory(page);
         }
 
@@ -1019,6 +1051,72 @@
         event.target.classList.add('active');
     }
 
+    // ===== INVENTORY PAGE (FOR CUSTOMERS) =====
+    function displayInventoryPage() {
+        const grid = document.getElementById('inventoryGrid');
+        grid.innerHTML = '';
+        
+        // Get all products from all categories
+        const allProducts = products.filter(p => p.stock > 0);
+        
+        if (allProducts.length === 0) {
+            grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; padding: 40px; color: #999;">No products available right now</p>';
+            return;
+        }
+
+        allProducts.forEach(product => {
+            const card = createProductCard(product);
+            grid.appendChild(card);
+        });
+    }
+
+    // ===== IMAGE UPLOAD =====
+    function dragOver(e) {
+        e.preventDefault();
+        document.getElementById('dragDropArea').style.background = '#efefef';
+        document.getElementById('dragDropArea').style.borderColor = '#000';
+    }
+
+    function dragLeave(e) {
+        document.getElementById('dragDropArea').style.background = '#fafafa';
+        document.getElementById('dragDropArea').style.borderColor = '#ccc';
+    }
+
+    function dropImage(e) {
+        e.preventDefault();
+        dragLeave(e);
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            handleImageFile(files[0]);
+        }
+    }
+
+    function handleImageSelect(e) {
+        const files = e.target.files;
+        if (files.length > 0) {
+            handleImageFile(files[0]);
+        }
+    }
+
+    function handleImageFile(file) {
+        if (!file.type.startsWith('image/')) {
+            alert('Please select an image file');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const base64 = e.target.result;
+            document.getElementById('productImage').value = base64;
+            document.getElementById('previewImg').src = base64;
+            document.getElementById('imagePreview').style.display = 'block';
+            showMessage('Image uploaded! Ready to publish.');
+        };
+        reader.readAsDataURL(file);
+    }
+
+
+
     function showMessage(text) {
         const banner = document.getElementById('messageBanner');
         banner.textContent = text;
@@ -1048,9 +1146,13 @@
         showMessage('Product added successfully!');
 
         document.getElementById('productForm').reset();
+        document.getElementById('imagePreview').style.display = 'none';
+        document.getElementById('productImage').value = '';
+        document.getElementById('imageInput').value = '';
         loadProducts();
         updateDashboard();
         displayAllProducts();
+        displayInventoryPage();
     }
 
     function deleteProduct(id) {
@@ -1061,6 +1163,7 @@
             loadProducts();
             updateDashboard();
             displayAllProducts();
+            displayInventoryPage();
         }
     }
 
