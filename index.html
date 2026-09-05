@@ -711,6 +711,7 @@
             <button class="nav-btn" onclick="goToPage('pants')" data-page="pants">Pants</button>
             <button class="nav-btn" onclick="goToPage('shoes')" data-page="shoes">Shoes</button>
             <button class="nav-btn" onclick="goToPage('drips')" data-page="drips">Drips</button>
+            <button class="cart-icon" onclick="goToPage('cart')">🛒 Cart (<span id="cartCount">0</span>)</button>
             <button class="nav-btn" onclick="goToPage('admin')" data-page="admin">Admin</button>
         </div>
     </div>
@@ -811,6 +812,117 @@
         </div>
     </footer>
 </div>
+
+<!-- CART PAGE -->
+<div id="cartPage" class="page">
+    <div class="page-container">
+        <h1>Shopping Cart</h1>
+        <div id="cartContainer" style="margin-top: 30px;">
+            <div id="emptyCart" style="text-align: center; padding: 60px 20px;">
+                <p style="font-size: 18px; color: #666; margin-bottom: 20px;">Your cart is empty</p>
+                <button class="btn-primary" onclick="goToPage('inventory')" style="padding: 12px 32px;">Continue Shopping</button>
+            </div>
+            <div id="cartItems" style="display: none;">
+                <table style="width: 100%; margin-bottom: 30px;">
+                    <thead>
+                        <tr style="border-bottom: 2px solid #e8e8e8;">
+                            <th style="text-align: left; padding: 12px;">Product</th>
+                            <th style="text-align: left; padding: 12px;">Price</th>
+                            <th style="text-align: left; padding: 12px;">Qty</th>
+                            <th style="text-align: left; padding: 12px;">Subtotal</th>
+                            <th style="text-align: left; padding: 12px;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cartItemsList"></tbody>
+                </table>
+                <div style="text-align: right; max-width: 400px; margin-left: auto; background: #f5f5f5; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
+                    <p style="font-size: 14px; margin-bottom: 12px;"><strong>Subtotal:</strong> ₨<span id="subtotal">0</span></p>
+                    <p style="font-size: 14px; margin-bottom: 12px;"><strong>Delivery Fee:</strong> ₨300</p>
+                    <p style="font-size: 18px; font-weight: 800; border-top: 2px solid #e8e8e8; padding-top: 12px;"><strong>Total:</strong> ₨<span id="cartTotal">0</span></p>
+                </div>
+                <div style="display: flex; gap: 16px; justify-content: flex-end;">
+                    <button class="btn-primary" onclick="goToPage('inventory')" style="background: none; border: 2px solid #000; color: #000;">Continue Shopping</button>
+                    <button class="btn-primary" onclick="checkoutCart()" style="padding: 12px 40px;">Checkout</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4>WE WEAR</h4>
+                <p>Pre-loved. Re-styled. Yours.</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2024 WE WEAR. All rights reserved.</p>
+        </div>
+    </footer>
+</div>
+
+<!-- CHECKOUT MODAL -->
+<div id="checkoutModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 1000; overflow-y: auto; padding: 40px 20px;">
+    <div style="background: var(--white); max-width: 600px; margin: 40px auto; padding: 40px; border-radius: 8px; animation: slideUp 0.3s ease-out;">
+        <h2 style="font-size: 28px; font-weight: 800; margin-bottom: 20px; text-transform: uppercase;">Checkout</h2>
+        
+        <!-- Order Summary -->
+        <div id="checkoutSummary" style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
+            <h3 style="font-size: 14px; font-weight: 700; margin-bottom: 16px; text-transform: uppercase;">Order Summary</h3>
+            <div id="checkoutItems"></div>
+            <div style="border-top: 2px solid #e8e8e8; padding-top: 16px; margin-top: 16px;">
+                <p style="font-size: 14px; margin-bottom: 8px;"><strong>Subtotal:</strong> ₨<span id="checkoutSubtotal">0</span></p>
+                <p style="font-size: 14px; margin-bottom: 8px;"><strong>Delivery Fee:</strong> ₨300</p>
+                <p style="font-size: 16px; font-weight: 800;"><strong>Total:</strong> ₨<span id="checkoutTotal">0</span></p>
+            </div>
+        </div>
+
+        <!-- Checkout Form -->
+        <form id="checkoutForm" onsubmit="submitCheckout(event)">
+            <div class="form-group" style="margin-bottom: 16px;">
+                <label style="font-size: 12px; font-weight: 700; text-transform: uppercase; margin-bottom: 8px; display: block;">Full Name *</label>
+                <input type="text" id="checkoutName" placeholder="Your full name" required style="width: 100%; padding: 12px; border: 1px solid #e8e8e8; border-radius: 4px; font-size: 14px;">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 16px;">
+                <label style="font-size: 12px; font-weight: 700; text-transform: uppercase; margin-bottom: 8px; display: block;">Phone Number *</label>
+                <input type="tel" id="checkoutPhone" placeholder="03XX-XXXXXXX" required style="width: 100%; padding: 12px; border: 1px solid #e8e8e8; border-radius: 4px; font-size: 14px;">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 16px;">
+                <label style="font-size: 12px; font-weight: 700; text-transform: uppercase; margin-bottom: 8px; display: block;">City *</label>
+                <input type="text" id="checkoutCity" placeholder="Your city" required style="width: 100%; padding: 12px; border: 1px solid #e8e8e8; border-radius: 4px; font-size: 14px;">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 16px;">
+                <label style="font-size: 12px; font-weight: 700; text-transform: uppercase; margin-bottom: 8px; display: block;">Delivery Address *</label>
+                <textarea id="checkoutAddress" placeholder="Complete delivery address" required style="width: 100%; padding: 12px; border: 1px solid #e8e8e8; border-radius: 4px; font-size: 14px; min-height: 80px; font-family: inherit;"></textarea>
+            </div>
+
+            <div style="background: #f5f5f5; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+                <p style="font-size: 12px; color: #666;"><strong>Payment Method:</strong> Cash on Delivery</p>
+                <p style="font-size: 12px; color: #666;">You will pay ₨<span id="checkoutFinalTotal">0</span> on delivery</p>
+            </div>
+
+            <div style="display: flex; gap: 12px;">
+                <button type="button" class="btn-primary" onclick="closeCheckout()" style="flex: 1; background: none; border: 2px solid #000; color: #000;">Cancel</button>
+                <button type="submit" class="btn-primary" style="flex: 1;">Place Order</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    @keyframes slideUp {
+        from {
+            transform: translateY(40px);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+</style>
 
 <!-- ADMIN PAGE -->
 <div id="adminPage" class="page">
@@ -1001,6 +1113,7 @@
         displayAllProducts();
         displayInventoryPage();
         updateDashboard();
+        updateCartCount();
     }
 
     // ===== NAVIGATION =====
@@ -1015,6 +1128,8 @@
             displayInventoryPage();
         } else if (page === 'shirts' || page === 'pants' || page === 'shoes' || page === 'drips') {
             displayProductsByCategory(page);
+        } else if (page === 'cart') {
+            displayCart();
         }
 
         window.scrollTo(0, 0);
@@ -1154,6 +1269,7 @@
         }
 
         localStorage.setItem('we_wear_cart', JSON.stringify(cart));
+        updateCartCount();
         showMessage('✅ Added to cart!');
     }
 
@@ -1164,73 +1280,199 @@
             return;
         }
 
-        const customerName = prompt('Enter your name:');
-        if (!customerName) return;
+        // Add to cart and open checkout
+        let cart = JSON.parse(localStorage.getItem('we_wear_cart')) || [];
+        const existingItem = cart.find(item => item.id === productId);
 
-        const customerPhone = prompt('Enter your phone number:');
-        if (!customerPhone) return;
+        if (existingItem) {
+            existingItem.quantity += 1;
+        } else {
+            cart.push({
+                id: product.id,
+                name: product.name,
+                price: product.price,
+                size: product.size,
+                condition: product.condition,
+                image: product.image,
+                quantity: 1
+            });
+        }
 
-        const customerAddress = prompt('Enter your delivery address:');
-        if (!customerAddress) return;
+        localStorage.setItem('we_wear_cart', JSON.stringify(cart));
+        updateCartCount();
+        openCheckout();
+    }
+
+    function updateCartCount() {
+        const cart = JSON.parse(localStorage.getItem('we_wear_cart')) || [];
+        const count = cart.reduce((sum, item) => sum + item.quantity, 0);
+        document.getElementById('cartCount').textContent = count;
+    }
+
+    function openCheckout() {
+        const cart = JSON.parse(localStorage.getItem('we_wear_cart')) || [];
+        if (cart.length === 0) {
+            showMessage('❌ Cart is empty');
+            return;
+        }
+
+        // Show checkout summary
+        let summaryHTML = '';
+        let subtotal = 0;
+        cart.forEach(item => {
+            const itemTotal = item.price * item.quantity;
+            subtotal += itemTotal;
+            summaryHTML += `<p style="font-size: 13px; margin-bottom: 8px;">${item.name} × ${item.quantity} = ₨${itemTotal.toLocaleString()}</p>`;
+        });
+
+        const total = subtotal + 300;
+
+        document.getElementById('checkoutItems').innerHTML = summaryHTML;
+        document.getElementById('checkoutSubtotal').textContent = subtotal.toLocaleString();
+        document.getElementById('checkoutTotal').textContent = total.toLocaleString();
+        document.getElementById('checkoutFinalTotal').textContent = total.toLocaleString();
+        document.getElementById('checkoutModal').style.display = 'block';
+    }
+
+    function closeCheckout() {
+        document.getElementById('checkoutModal').style.display = 'none';
+        document.getElementById('checkoutForm').reset();
+    }
+
+    function submitCheckout(e) {
+        e.preventDefault();
+
+        const cart = JSON.parse(localStorage.getItem('we_wear_cart')) || [];
+        if (cart.length === 0) return;
+
+        const name = document.getElementById('checkoutName').value;
+        const phone = document.getElementById('checkoutPhone').value;
+        const city = document.getElementById('checkoutCity').value;
+        const address = document.getElementById('checkoutAddress').value;
+        
+        let cartDetails = cart.map(item => `• ${item.name} (${item.size}, ${item.condition}) × ${item.quantity} = ₨${(item.price * item.quantity).toLocaleString()}`).join('\n');
+        let subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        let total = subtotal + 300;
 
         const orderMessage = `
 🛍️ **NEW ORDER - WE WEAR**
 
-📦 **PRODUCT DETAILS:**
-• Name: ${productName}
-• Price: ₨${productPrice.toLocaleString()}
-• Size: ${productSize}
-• Condition: ${productCondition}
-• Quantity: 1
+📦 **ORDER ITEMS:**
+${cartDetails}
+
+💰 **ORDER TOTAL:**
+• Subtotal: ₨${subtotal.toLocaleString()}
+• Delivery Fee: ₨300
+• TOTAL: ₨${total.toLocaleString()}
 
 👤 **CUSTOMER DETAILS:**
-• Name: ${customerName}
-• Phone: ${customerPhone}
-• Address: ${customerAddress}
+• Name: ${name}
+• Phone: ${phone}
+• City: ${city}
+• Address: ${address}
 
-💰 **PAYMENT:** Cash on Delivery
-🚚 **DELIVERY FEE:** ₨300
-
-📅 Time: ${new Date().toLocaleString()}
+💳 **PAYMENT METHOD:** Cash on Delivery
+📅 **Order Time:** ${new Date().toLocaleString()}
         `.trim();
 
+        // Send WhatsApp
         const whatsappNumber = '923558572688';
-        const whatsappMessage = encodeURIComponent(orderMessage);
-        const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${whatsappMessage}`;
-
-        const emailSubject = `New Order - ${productName}`;
-        const emailBody = encodeURIComponent(orderMessage);
-        const emailUrl = `mailto:wewearadmin@gmail.com?subject=${encodeURIComponent(emailSubject)}&body=${emailBody}`;
-
+        const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(orderMessage)}`;
         window.open(whatsappUrl, '_blank');
-        
+
+        // Send Email
         setTimeout(() => {
+            const emailSubject = `New Order from WE WEAR - ${name}`;
+            const emailUrl = `mailto:wewearadmin@gmail.com?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(orderMessage)}`;
             window.open(emailUrl, '_blank');
         }, 500);
 
+        // Save order
         loadFromStorage();
-        product.stock -= 1;
+        cart.forEach(item => {
+            const product = products.find(p => p.id === item.id);
+            if (product) {
+                product.stock -= item.quantity;
+            }
+        });
         localStorage.setItem('we_wear_products', JSON.stringify(products));
 
-        let updatedOrders = JSON.parse(localStorage.getItem('we_wear_orders')) || [];
-        updatedOrders.push({
+        let ordersData = JSON.parse(localStorage.getItem('we_wear_orders')) || [];
+        ordersData.push({
             id: Date.now(),
-            product: productName,
-            price: productPrice,
-            size: productSize,
-            quantity: 1,
-            customerName: customerName,
-            customerPhone: customerPhone,
-            customerAddress: customerAddress,
+            items: cart,
+            subtotal: subtotal,
+            total: total,
+            customerName: name,
+            customerPhone: phone,
+            customerCity: city,
+            customerAddress: address,
             status: 'Pending',
             created_at: new Date().toISOString()
         });
-        localStorage.setItem('we_wear_orders', JSON.stringify(updatedOrders));
-        
-        showMessage('✅ Order sent! Check WhatsApp & Email');
+        localStorage.setItem('we_wear_orders', JSON.stringify(ordersData));
+
+        // Clear cart
+        localStorage.setItem('we_wear_cart', JSON.stringify([]));
+        closeCheckout();
+        updateCartCount();
         loadFromStorage();
         displayAllProducts();
         displayInventoryPage();
+        showMessage('✅ Order placed! Check your WhatsApp & Email');
+    }
+
+    function checkoutCart() {
+        const cart = JSON.parse(localStorage.getItem('we_wear_cart')) || [];
+        if (cart.length === 0) {
+            showMessage('❌ Cart is empty');
+            return;
+        }
+        openCheckout();
+    }
+
+    function displayCart() {
+        const cart = JSON.parse(localStorage.getItem('we_wear_cart')) || [];
+        updateCartCount();
+
+        if (cart.length === 0) {
+            document.getElementById('emptyCart').style.display = 'block';
+            document.getElementById('cartItems').style.display = 'none';
+            return;
+        }
+
+        document.getElementById('emptyCart').style.display = 'none';
+        document.getElementById('cartItems').style.display = 'block';
+
+        let tableHTML = '';
+        let subtotal = 0;
+
+        cart.forEach((item, index) => {
+            const itemTotal = item.price * item.quantity;
+            subtotal += itemTotal;
+            tableHTML += `
+                <tr style="border-bottom: 1px solid #e8e8e8;">
+                    <td style="padding: 12px;"><strong>${item.name}</strong><br><small>${item.size} • ${item.condition}</small></td>
+                    <td style="padding: 12px;">₨${item.price.toLocaleString()}</td>
+                    <td style="padding: 12px;">${item.quantity}</td>
+                    <td style="padding: 12px;">₨${itemTotal.toLocaleString()}</td>
+                    <td style="padding: 12px;"><button class="btn-small btn-delete" onclick="removeFromCart(${index})">Remove</button></td>
+                </tr>
+            `;
+        });
+
+        const total = subtotal + 300;
+        document.getElementById('cartItemsList').innerHTML = tableHTML;
+        document.getElementById('subtotal').textContent = subtotal.toLocaleString();
+        document.getElementById('cartTotal').textContent = total.toLocaleString();
+    }
+
+    function removeFromCart(index) {
+        let cart = JSON.parse(localStorage.getItem('we_wear_cart')) || [];
+        cart.splice(index, 1);
+        localStorage.setItem('we_wear_cart', JSON.stringify(cart));
+        displayCart();
+        updateCartCount();
     }
 
     // ===== PRODUCTS =====
