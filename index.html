@@ -1905,6 +1905,19 @@ Time: ${new Date().toLocaleString()}`;
     // Start
     init();
 </script>
+<!-- SUPABASE CONNECTION -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
+<script>
+const SUPABASE_URL = "https://btvhzdeswegvcghlxwgs.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_JG5-tT7PPVYuHx1rfqZjuw_zW2S8ksw";
+
+const supabaseClient = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_PUBLISHABLE_KEY
+);
+
+console.log("WE WEAR Supabase connected");
+</script>
 </body>
 </html>
