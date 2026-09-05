@@ -699,6 +699,18 @@
             }
         }
     </style>
+
+<style>
+    .product-image { object-fit: contain; background: #fff; }
+    .product-image-container { background: #fff; }
+    @media (max-width: 768px) {
+        .page { padding: 24px 14px; }
+        .form-section { padding: 18px; }
+        table { display: block; overflow-x: auto; white-space: nowrap; }
+        .checkout-modal-content { width: 100%; }
+    }
+</style>
+
 </head>
 <body>
 
@@ -733,7 +745,7 @@
             </div>
         </div>
         <div class="footer-bottom">
-            <p>&copy; 2024 WE WEAR. All rights reserved.</p>
+            <p>&copy; 2026 WE WEAR. All rights reserved.</p>
         </div>
     </footer>
 </div>
@@ -752,7 +764,7 @@
             </div>
         </div>
         <div class="footer-bottom">
-            <p>&copy; 2024 WE WEAR. All rights reserved.</p>
+            <p>&copy; 2026 WE WEAR. All rights reserved.</p>
         </div>
     </footer>
 </div>
@@ -771,7 +783,7 @@
             </div>
         </div>
         <div class="footer-bottom">
-            <p>&copy; 2024 WE WEAR. All rights reserved.</p>
+            <p>&copy; 2026 WE WEAR. All rights reserved.</p>
         </div>
     </footer>
 </div>
@@ -790,7 +802,7 @@
             </div>
         </div>
         <div class="footer-bottom">
-            <p>&copy; 2024 WE WEAR. All rights reserved.</p>
+            <p>&copy; 2026 WE WEAR. All rights reserved.</p>
         </div>
     </footer>
 </div>
@@ -809,7 +821,7 @@
             </div>
         </div>
         <div class="footer-bottom">
-            <p>&copy; 2024 WE WEAR. All rights reserved.</p>
+            <p>&copy; 2026 WE WEAR. All rights reserved.</p>
         </div>
     </footer>
 </div>
@@ -856,7 +868,7 @@
             </div>
         </div>
         <div class="footer-bottom">
-            <p>&copy; 2024 WE WEAR. All rights reserved.</p>
+            <p>&copy; 2026 WE WEAR. All rights reserved.</p>
         </div>
     </footer>
 </div>
@@ -1094,77 +1106,162 @@
             </div>
         </div>
         <div class="footer-bottom">
-            <p>&copy; 2024 WE WEAR. All rights reserved.</p>
+            <p>&copy; 2026 WE WEAR. All rights reserved.</p>
         </div>
     </footer>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-    // ===== DATA STORAGE =====
+    // ============================================================
+    // WE WEAR — SUPABASE EDITION
+    // Products + orders live in Supabase so the shop works across devices.
+    // IMPORTANT: replace SUPABASE_PUBLISHABLE_KEY with your publishable key.
+    // Never put a Supabase secret/service-role key in this file.
+    // ============================================================
+
+    const SUPABASE_URL = 'https://btvhzdeswegvcghlxwgs.supabase.co';
+    const SUPABASE_PUBLISHABLE_KEY = 'PASTE_YOUR_SUPABASE_PUBLISHABLE_KEY_HERE';
+    const supabaseClient = window.supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_PUBLISHABLE_KEY
+    );
+
     const ADMIN_EMAIL = 'wewearadmin@gmail.com';
-    const ADMIN_PASSWORD = 'Thrift.2026';
+    const DELIVERY_FEE = 300;
+    const IMAGE_BUCKET = 'product-images';
 
     let isAdminLoggedIn = false;
     let products = [];
     let orders = [];
 
-    // ===== LOAD FROM STORAGE =====
-    function loadFromStorage() {
-        products = JSON.parse(localStorage.getItem('we_wear_products')) || [];
-        orders = JSON.parse(localStorage.getItem('we_wear_orders')) || [];
+    // ===== HELPERS =====
+    function escapeHTML(value) {
+        return String(value ?? '').replace(/[&<>"']/g, ch => ({
+            '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#039;'
+        }[ch]));
     }
 
-    // Initialize
+    function showMessage(text) {
+        const banner = document.getElementById('messageBanner');
+        if (!banner) {
+            alert(text);
+            return;
+        }
+        banner.textContent = text;
+        banner.classList.add('show');
+        setTimeout(() => banner.classList.remove('show'), 3000);
+    }
+
+    function normaliseProduct(p) {
+        return {
+            id: p.id,
+            name: p.name || '',
+            price: Number(p.price || 0),
+            stock: Number(p.stock || 0),
+            category: String(p.category || '').toLowerCase(),
+            size: p.size || '',
+            condition: p.condition || '',
+            description: p.description || '',
+            image: p.image_url || p.image || '',
+            created_at: p.created_at || ''
+        };
+    }
+
+    async function loadProductsFromSupabase() {
+        const { data, error } = await supabaseClient
+            .from('products')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        products = (data || []).map(normaliseProduct);
+    }
+
+    async function loadOrdersFromSupabase() {
+        const { data, error } = await supabaseClient
+            .from('orders')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        orders = data || [];
+    }
+
+    async function refreshStore() {
+        try {
+            await loadProductsFromSupabase();
+            await displayAllProducts();
+            await displayInventoryPage();
+            updateCartCount();
+            if (isAdminLoggedIn) {
+                await loadOrdersFromSupabase();
+                loadProducts();
+                loadOrders();
+                updateDashboard();
+            }
+        } catch (error) {
+            console.error(error);
+            showMessage('❌ Could not load the store. Check your Supabase key/table setup.');
+        }
+    }
+
+    // ===== INITIALIZE =====
     async function init() {
-        loadFromStorage();
-        await displayAllProducts();
-        await displayInventoryPage();
-        updateDashboard();
-        updateCartCount();
+        await refreshStore();
     }
 
     // ===== NAVIGATION =====
     function goToPage(page) {
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-        document.getElementById(page + 'Page').classList.add('active');
+        const target = document.getElementById(page + 'Page');
+        if (target) target.classList.add('active');
 
         document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
         const navBtn = document.querySelector(`[data-page="${page}"]`);
         if (navBtn) navBtn.classList.add('active');
 
-        if (page === 'inventory') {
-            displayInventoryPage();
-        } else if (page === 'shirts' || page === 'pants' || page === 'shoes' || page === 'drips') {
-            displayProductsByCategory(page);
-        } else if (page === 'cart') {
-            displayCart();
-        }
+        if (page === 'inventory') displayInventoryPage();
+        else if (['shirts','pants','shoes','drips'].includes(page)) displayProductsByCategory(page);
+        else if (page === 'cart') displayCart();
 
         window.scrollTo(0, 0);
     }
 
-    // ===== ADMIN LOGIN =====
-    function loginAdmin() {
-        const email = document.getElementById('adminEmail').value;
+    // ===== ADMIN AUTH =====
+    async function loginAdmin() {
+        const email = document.getElementById('adminEmail').value.trim();
         const password = document.getElementById('adminPassword').value;
         const errorDiv = document.getElementById('loginError');
 
-        if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-            isAdminLoggedIn = true;
-            document.getElementById('loginForm').style.display = 'none';
-            document.getElementById('adminDashboard').style.display = 'block';
-            loadFromStorage();
-            updateDashboard();
-            loadProducts();
-            loadOrders();
-            errorDiv.classList.remove('show');
-        } else {
-            errorDiv.textContent = 'Invalid email or password';
+        if (!email || !password) return;
+
+        const { error } = await supabaseClient.auth.signInWithPassword({
+            email,
+            password
+        });
+
+        if (error) {
+            errorDiv.textContent = error.message || 'Invalid email or password';
             errorDiv.classList.add('show');
+            return;
         }
+
+        isAdminLoggedIn = true;
+        document.getElementById('loginForm').style.display = 'none';
+        document.getElementById('adminDashboard').style.display = 'block';
+        errorDiv.classList.remove('show');
+
+        await loadProductsFromSupabase();
+        await loadOrdersFromSupabase();
+        updateDashboard();
+        loadProducts();
+        loadOrders();
+        showAdminSection('dashboard');
     }
 
-    function logoutAdmin() {
+    async function logoutAdmin() {
+        await supabaseClient.auth.signOut();
         isAdminLoggedIn = false;
         document.getElementById('loginForm').style.display = 'block';
         document.getElementById('adminDashboard').style.display = 'none';
@@ -1173,63 +1270,58 @@
         document.getElementById('loginError').classList.remove('show');
     }
 
-    // ===== ADMIN SECTIONS =====
     function showAdminSection(section) {
         document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
-        document.getElementById(section + 'Section').classList.add('active');
+        const target = document.getElementById(section + 'Section');
+        if (target) target.classList.add('active');
 
         document.querySelectorAll('.admin-sidebar button').forEach(btn => btn.classList.remove('active'));
-        const targetButton = event && event.target ? event.target : document.querySelector(`.admin-sidebar button[onclick*="'${section}'"]`);
+        const targetButton = document.querySelector(`.admin-sidebar button[onclick*="'${section}'"]`);
         if (targetButton) targetButton.classList.add('active');
     }
 
-    // ===== INVENTORY PAGE (FOR CUSTOMERS) =====
+    // ===== CUSTOMER INVENTORY =====
     async function displayInventoryPage() {
         const grid = document.getElementById('inventoryGrid');
+        if (!grid) return;
         grid.innerHTML = '';
-        
+
         const allProducts = products.filter(p => p.stock > 0);
-        
-        if (allProducts.length === 0) {
-            grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; padding: 40px; color: #999;">No products available right now</p>';
+
+        if (!allProducts.length) {
+            grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;padding:40px;color:#999;">No products available right now</p>';
             return;
         }
 
         for (const product of allProducts) {
-            const card = await createProductCard(product);
-            grid.appendChild(card);
+            grid.appendChild(await createProductCard(product));
         }
     }
 
     // ===== IMAGE UPLOAD =====
     function dragOver(e) {
         e.preventDefault();
-        document.getElementById('dragDropArea').style.background = '#efefef';
-        document.getElementById('dragDropArea').style.borderColor = '#000';
+        const area = document.getElementById('dragDropArea');
+        area.style.background = '#efefef';
+        area.style.borderColor = '#000';
     }
 
-    function dragLeave(e) {
-        document.getElementById('dragDropArea').style.background = '#fafafa';
-        document.getElementById('dragDropArea').style.borderColor = '#ccc';
+    function dragLeave() {
+        const area = document.getElementById('dragDropArea');
+        area.style.background = '#fafafa';
+        area.style.borderColor = '#ccc';
     }
 
     function dropImage(e) {
         e.preventDefault();
         dragLeave(e);
-        const files = e.dataTransfer.files;
-        if (files.length > 0) {
-            handleImageFile(files[0]);
-        }
+        if (e.dataTransfer.files.length) handleImageFile(e.dataTransfer.files[0]);
     }
 
     function handleImageSelect(e) {
-        const files = e.target.files;
-        if (files.length > 0) {
-            handleImageFile(files[0]);
-        }
+        if (e.target.files.length) handleImageFile(e.target.files[0]);
     }
 
-    // Compress uploaded images so multiple products don't hit localStorage's small quota.
     function compressImage(file, maxSize = 1400, quality = 0.78) {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -1244,7 +1336,10 @@
                     ctx.fillStyle = '#fff';
                     ctx.fillRect(0, 0, canvas.width, canvas.height);
                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                    resolve(canvas.toDataURL('image/jpeg', quality));
+                    canvas.toBlob(blob => {
+                        if (!blob) return reject(new Error('Compression failed'));
+                        resolve(blob);
+                    }, 'image/jpeg', quality);
                 };
                 img.onerror = reject;
                 img.src = e.target.result;
@@ -1254,30 +1349,49 @@
         });
     }
 
-    function handleImageFile(file) {
+    async function handleImageFile(file) {
         if (!file.type.startsWith('image/')) {
             alert('Please select an image file');
             return;
         }
 
-        compressImage(file).then(base64 => {
-            document.getElementById('productImage').value = base64;
-            document.getElementById('previewImg').src = base64;
+        try {
+            const blob = await compressImage(file);
+            const previewUrl = URL.createObjectURL(blob);
+            document.getElementById('productImage').value = previewUrl;
+            document.getElementById('previewImg').src = previewUrl;
             document.getElementById('imagePreview').style.display = 'block';
-            showMessage('✅ Image uploaded and optimized! Ready to publish.');
-        }).catch(() => alert('Could not process this image. Please try another image.'));
+
+            // Keep the compressed Blob for the publish step.
+            window.weWearPendingImageBlob = blob;
+            showMessage('✅ Image optimized and ready to publish!');
+        } catch (error) {
+            console.error(error);
+            alert('Could not process this image. Please try another image.');
+        }
     }
 
-    function showMessage(text) {
-        const banner = document.getElementById('messageBanner');
-        banner.textContent = text;
-        banner.classList.add('show');
-        setTimeout(() => banner.classList.remove('show'), 3000);
+    async function uploadProductImage(blob, productId) {
+        if (!blob) return '';
+
+        const path = `${productId}-${Date.now()}.jpg`;
+        const { error } = await supabaseClient.storage
+            .from(IMAGE_BUCKET)
+            .upload(path, blob, {
+                contentType: 'image/jpeg',
+                upsert: false
+            });
+
+        if (error) throw error;
+
+        const { data } = supabaseClient.storage
+            .from(IMAGE_BUCKET)
+            .getPublicUrl(path);
+
+        return data.publicUrl;
     }
 
-    // ===== CART & BUY NOW =====
-    // Cart is deliberately stored separately from the product catalog.
-    // Adding an item immediately updates the cart page and count.
+    // ===== CART =====
     function getCart() {
         try { return JSON.parse(localStorage.getItem('we_wear_cart')) || []; }
         catch (_) { return []; }
@@ -1289,52 +1403,84 @@
     }
 
     function addProductToCart(productId) {
-        const product = products.find(p => Number(p.id) === Number(productId));
-        if (!product || Number(product.stock) <= 0) {
+        const product = products.find(p => String(p.id) === String(productId));
+        if (!product || product.stock <= 0) {
             showMessage('❌ Product not available');
             return;
         }
+
         const cart = getCart();
-        const existing = cart.find(item => Number(item.id) === Number(productId));
-        if (existing) existing.quantity += 1;
-        else cart.push({ id: product.id, name: product.name, price: Number(product.price), size: product.size, condition: product.condition, image: product.image, quantity: 1 });
+        const existing = cart.find(item => String(item.id) === String(productId));
+
+        if (existing) {
+            if (existing.quantity >= product.stock) {
+                showMessage('❌ You cannot add more than available stock');
+                return;
+            }
+            existing.quantity += 1;
+        } else {
+            cart.push({
+                id: product.id,
+                name: product.name,
+                price: product.price,
+                size: product.size,
+                condition: product.condition,
+                image: product.image,
+                quantity: 1
+            });
+        }
+
         saveCart(cart);
         showMessage('✅ Added to cart!');
-        // Go straight to the cart so the customer can see the item immediately.
         goToPage('cart');
     }
 
     function buyNowProduct(productId) {
-        const product = products.find(p => Number(p.id) === Number(productId));
-        if (!product || Number(product.stock) <= 0) {
+        const product = products.find(p => String(p.id) === String(productId));
+        if (!product || product.stock <= 0) {
             showMessage('❌ Product not available');
             return;
         }
-        // Buy Now is a ONE-PRODUCT checkout. It does not accidentally include old cart items.
-        const checkoutCart = [{ id: product.id, name: product.name, price: Number(product.price), size: product.size, condition: product.condition, image: product.image, quantity: 1 }];
+
+        const checkoutCart = [{
+            id: product.id,
+            name: product.name,
+            price: product.price,
+            size: product.size,
+            condition: product.condition,
+            image: product.image,
+            quantity: 1
+        }];
+
         sessionStorage.setItem('we_wear_checkout_cart', JSON.stringify(checkoutCart));
         openCheckout(checkoutCart);
     }
 
     function updateCartCount() {
-        const cart = getCart();
-        const count = cart.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+        const count = getCart().reduce((sum, item) => sum + Number(item.quantity || 0), 0);
         const el = document.getElementById('cartCount');
         if (el) el.textContent = count;
     }
 
     function openCheckout(items) {
         const cart = items || getCart();
-        if (!cart.length) { showMessage('❌ Cart is empty'); return; }
+        if (!cart.length) {
+            showMessage('❌ Cart is empty');
+            return;
+        }
+
         sessionStorage.setItem('we_wear_checkout_cart', JSON.stringify(cart));
+
         let summaryHTML = '';
         let subtotal = 0;
+
         cart.forEach(item => {
             const itemTotal = Number(item.price) * Number(item.quantity);
             subtotal += itemTotal;
-            summaryHTML += `<p style="font-size:13px;margin-bottom:8px;"><strong>${item.name}</strong> × ${item.quantity} — ₨${itemTotal.toLocaleString()}</p>`;
+            summaryHTML += `<p style="font-size:13px;margin-bottom:8px;"><strong>${escapeHTML(item.name)}</strong> × ${item.quantity} — ₨${itemTotal.toLocaleString()}</p>`;
         });
-        const total = subtotal + 300;
+
+        const total = subtotal + DELIVERY_FEE;
         document.getElementById('checkoutItems').innerHTML = summaryHTML;
         document.getElementById('checkoutSubtotal').textContent = subtotal.toLocaleString();
         document.getElementById('checkoutTotal').textContent = total.toLocaleString();
@@ -1348,71 +1494,136 @@
 
     async function submitCheckout(e) {
         e.preventDefault();
+
         const cart = JSON.parse(sessionStorage.getItem('we_wear_checkout_cart') || '[]');
-        if (!cart.length) { showMessage('❌ No product selected'); return; }
+        if (!cart.length) {
+            showMessage('❌ No product selected');
+            return;
+        }
 
         const name = document.getElementById('checkoutName').value.trim();
         const email = document.getElementById('checkoutEmail').value.trim();
         const phone = document.getElementById('checkoutPhone').value.trim();
         const city = document.getElementById('checkoutCity').value.trim();
         const address = document.getElementById('checkoutAddress').value.trim();
-        const subtotal = cart.reduce((sum, item) => sum + Number(item.price) * Number(item.quantity), 0);
-        const total = subtotal + 300;
-        const cartDetails = cart.map(item => `• ${item.name} | Size: ${item.size} | ${item.condition} | Qty: ${item.quantity} | ₨${(Number(item.price) * Number(item.quantity)).toLocaleString()}`).join('\n');
-        const orderMessage = `NEW ORDER - WE WEAR\n\nPRODUCT(S):\n${cartDetails}\n\nTOTAL: ₨${total.toLocaleString()} (including ₨300 delivery)\n\nCUSTOMER\nName: ${name}\nEmail: ${email}\nPhone: ${phone}\nCity: ${city}\nAddress: ${address}\n\nPayment: Cash on Delivery\nTime: ${new Date().toLocaleString()}`;
+
+        const items = cart.map(item => ({
+            product_id: item.id,
+            name: item.name,
+            size: item.size,
+            condition: item.condition,
+            quantity: Number(item.quantity),
+            price: Number(item.price)
+        }));
+
+        const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+        const total = subtotal + DELIVERY_FEE;
+
+        // Secure stock/order transaction lives in PostgreSQL.
+        const { data: orderId, error } = await supabaseClient.rpc('place_order', {
+            p_customer_name: name,
+            p_customer_email: email,
+            p_customer_phone: phone,
+            p_customer_city: city,
+            p_customer_address: address,
+            p_items: items,
+            p_subtotal: subtotal,
+            p_delivery_fee: DELIVERY_FEE,
+            p_total: total
+        });
+
+        if (error) {
+            console.error(error);
+            showMessage(`❌ ${error.message || 'Could not place order'}`);
+            return;
+        }
+
+        const cartDetails = items
+            .map(item => `• ${item.name} | Size: ${item.size} | ${item.condition} | Qty: ${item.quantity} | ₨${(item.price * item.quantity).toLocaleString()}`)
+            .join('\n');
+
+        const orderMessage =
+`NEW ORDER - WE WEAR
+
+ORDER ID: ${orderId}
+
+PRODUCT(S):
+${cartDetails}
+
+TOTAL: ₨${total.toLocaleString()} (including ₨${DELIVERY_FEE} delivery)
+
+CUSTOMER
+Name: ${name}
+Email: ${email}
+Phone: ${phone}
+City: ${city}
+Address: ${address}
+
+Payment: Cash on Delivery
+Time: ${new Date().toLocaleString()}`;
 
         const whatsappNumber = '923558572688';
         const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(orderMessage)}`;
 
-        // Send the order to the store email through FormSubmit (works on GitHub Pages).
-        // The first submission may require a one-time confirmation from the mailbox owner.
-        const emailForm = document.createElement('form');
-        emailForm.method = 'POST';
-        emailForm.action = 'https://formsubmit.co/wewearadmin@gmail.com';
-        emailForm.target = 'wewear_email_sink';
-        emailForm.style.display = 'none';
-        const fields = { _subject: `WE WEAR New Order - ${name}`, _captcha: 'false', _template: 'table', name, email, phone, city, address, products: cartDetails, total: `₨${total.toLocaleString()}` };
-        Object.entries(fields).forEach(([key, value]) => { const input=document.createElement('input'); input.name=key; input.value=value; emailForm.appendChild(input); });
-        document.body.appendChild(emailForm);
-        emailForm.submit();
+        // Optional email notification through FormSubmit.
+        // WhatsApp remains the immediate order notification.
+        try {
+            const emailForm = document.createElement('form');
+            emailForm.method = 'POST';
+            emailForm.action = 'https://formsubmit.co/wewearadmin@gmail.com';
+            emailForm.target = 'wewear_email_sink';
+            emailForm.style.display = 'none';
 
-        // Save the order locally for the admin panel and reduce stock immediately.
-        loadFromStorage();
-        cart.forEach(item => { const product = products.find(p => Number(p.id) === Number(item.id)); if (product) product.stock = Math.max(0, Number(product.stock) - Number(item.quantity)); });
-        localStorage.setItem('we_wear_products', JSON.stringify(products));
-        const ordersData = JSON.parse(localStorage.getItem('we_wear_orders') || '[]');
-        ordersData.push({ id: Date.now(), items: cart, subtotal, total, customerName:name, customerEmail:email, customerPhone:phone, customerCity:city, customerAddress:address, status:'Pending', created_at:new Date().toISOString() });
-        localStorage.setItem('we_wear_orders', JSON.stringify(ordersData));
+            const fields = {
+                _subject: `WE WEAR New Order - ${name}`,
+                _captcha: 'false',
+                _template: 'table',
+                order_id: orderId,
+                name, email, phone, city, address,
+                products: cartDetails,
+                total: `₨${total.toLocaleString()}`
+            };
 
-        // Remove purchased items from cart.
-        const existingCart = getCart();
-        const purchasedIds = new Set(cart.map(x => Number(x.id)));
-        saveCart(existingCart.filter(x => !purchasedIds.has(Number(x.id))));
+            Object.entries(fields).forEach(([key, value]) => {
+                const input = document.createElement('input');
+                input.name = key;
+                input.value = value;
+                emailForm.appendChild(input);
+            });
+
+            document.body.appendChild(emailForm);
+            emailForm.submit();
+        } catch (mailError) {
+            console.warn('Email notification failed:', mailError);
+        }
+
+        // Remove purchased products from the local cart.
+        const purchasedIds = new Set(cart.map(x => String(x.id)));
+        saveCart(getCart().filter(x => !purchasedIds.has(String(x.id))));
         sessionStorage.removeItem('we_wear_checkout_cart');
         document.getElementById('checkoutForm').reset();
         closeCheckout();
-        loadFromStorage();
-        loadProducts();
-        updateDashboard();
-        displayAllProducts();
-        displayInventoryPage();
-        showMessage('✅ Order sent! Opening WhatsApp…');
 
-        // Open the WhatsApp order containing the exact product(s) and customer details.
-        setTimeout(() => { window.open(whatsappUrl, '_blank', 'noopener'); }, 150);
+        await refreshStore();
+        showMessage('✅ Order placed! Opening WhatsApp…');
+
+        setTimeout(() => window.open(whatsappUrl, '_blank', 'noopener'), 150);
     }
 
     function checkoutCart() {
         const cart = getCart();
-        if (!cart.length) { showMessage('❌ Cart is empty'); return; }
+        if (!cart.length) {
+            showMessage('❌ Cart is empty');
+            return;
+        }
         openCheckout(cart);
     }
 
     function displayCart() {
-        const cart = JSON.parse(localStorage.getItem('we_wear_cart')) || [];
+        const cart = getCart();
         updateCartCount();
 
-        if (cart.length === 0) {
+        if (!cart.length) {
             document.getElementById('emptyCart').style.display = 'block';
             document.getElementById('cartItems').style.display = 'none';
             return;
@@ -1425,262 +1636,263 @@
         let subtotal = 0;
 
         cart.forEach((item, index) => {
-            const itemTotal = item.price * item.quantity;
+            const itemTotal = Number(item.price) * Number(item.quantity);
             subtotal += itemTotal;
+
             tableHTML += `
-                <tr style="border-bottom: 1px solid #e8e8e8;">
-                    <td style="padding: 12px;"><strong>${item.name}</strong><br><small>${item.size} • ${item.condition}</small></td>
-                    <td style="padding: 12px;">₨${item.price.toLocaleString()}</td>
-                    <td style="padding: 12px;">${item.quantity}</td>
-                    <td style="padding: 12px;">₨${itemTotal.toLocaleString()}</td>
-                    <td style="padding: 12px;"><button class="btn-small btn-delete" onclick="removeFromCart(${index})">Remove</button></td>
-                </tr>
-            `;
+                <tr style="border-bottom:1px solid #e8e8e8;">
+                    <td style="padding:12px;"><strong>${escapeHTML(item.name)}</strong><br><small>${escapeHTML(item.size)} • ${escapeHTML(item.condition)}</small></td>
+                    <td style="padding:12px;">₨${Number(item.price).toLocaleString()}</td>
+                    <td style="padding:12px;">${item.quantity}</td>
+                    <td style="padding:12px;">₨${itemTotal.toLocaleString()}</td>
+                    <td style="padding:12px;"><button class="btn-small btn-delete" onclick="removeFromCart(${index})">Remove</button></td>
+                </tr>`;
         });
 
-        const total = subtotal + 300;
+        const total = subtotal + DELIVERY_FEE;
         document.getElementById('cartItemsList').innerHTML = tableHTML;
         document.getElementById('subtotal').textContent = subtotal.toLocaleString();
         document.getElementById('cartTotal').textContent = total.toLocaleString();
     }
 
     function removeFromCart(index) {
-        let cart = JSON.parse(localStorage.getItem('we_wear_cart')) || [];
+        const cart = getCart();
         cart.splice(index, 1);
-        localStorage.setItem('we_wear_cart', JSON.stringify(cart));
+        saveCart(cart);
         displayCart();
-        updateCartCount();
     }
 
-    // ===== PRODUCTS =====
+    // ===== PRODUCTS / ADMIN =====
     async function addProduct(e) {
         e.preventDefault();
 
-        const product = {
-            id: Date.now(),
-            name: document.getElementById('productName').value,
-            price: parseFloat(document.getElementById('productPrice').value),
-            stock: parseInt(document.getElementById('productStock').value),
-            category: document.getElementById('productCategory').value.toLowerCase(),
-            size: document.getElementById('productSize').value,
-            condition: document.getElementById('productCondition').value,
-            description: document.getElementById('productDescription').value,
-            image: document.getElementById('productImage').value,
-            created_at: new Date().toISOString()
-        };
-
-        // Keep large image data OUT of localStorage. Cache Storage is much larger and avoids the
-        // classic "first product works, second product fails" quota problem.
-        const imageData = product.image;
-        if (imageData && imageData.length > 100000) {
-            try {
-                const cache = await caches.open('wewear-product-images-v2');
-                await cache.put('/product-image/' + product.id, new Response(imageData, {headers:{'Content-Type':'text/plain'}}));
-                product.image = 'cache://' + product.id;
-            } catch (err) {
-                // Fall back to a smaller image if Cache Storage is unavailable.
-                product.image = imageData;
-            }
-        }
-        products.push(product);
-        try {
-            localStorage.setItem('we_wear_products', JSON.stringify(products));
-        } catch (err) {
-            products.pop();
-            showMessage('❌ Browser storage is full. Clear old site data or connect a real database for multi-device inventory.');
+        if (!isAdminLoggedIn) {
+            showMessage('❌ Please log in as admin first');
             return;
         }
-        showMessage('✅ Product published instantly!');
 
-        document.getElementById('productForm').reset();
-        document.getElementById('imagePreview').style.display = 'none';
-        document.getElementById('productImage').value = '';
-        document.getElementById('imageInput').value = '';
-        
-        loadFromStorage();
-        loadProducts();
-        updateDashboard();
-        displayAllProducts();
-        displayInventoryPage();
+        const name = document.getElementById('productName').value.trim();
+        const price = Number(document.getElementById('productPrice').value);
+        const stock = Number(document.getElementById('productStock').value);
+        const category = document.getElementById('productCategory').value.toLowerCase();
+        const size = document.getElementById('productSize').value.trim();
+        const condition = document.getElementById('productCondition').value;
+        const description = document.getElementById('productDescription').value.trim();
+        const imageBlob = window.weWearPendingImageBlob;
+
+        if (!name || price < 0 || stock < 0 || !size || !imageBlob) {
+            showMessage('❌ Add all required fields and an image');
+            return;
+        }
+
+        const tempId = crypto.randomUUID();
+
+        try {
+            const imageUrl = await uploadProductImage(imageBlob, tempId);
+
+            const { error } = await supabaseClient.from('products').insert({
+                id: tempId,
+                name,
+                price,
+                stock,
+                category,
+                size,
+                condition,
+                description,
+                image_url: imageUrl
+            });
+
+            if (error) throw error;
+
+            showMessage('✅ Product published to the live store!');
+
+            document.getElementById('productForm').reset();
+            document.getElementById('imagePreview').style.display = 'none';
+            document.getElementById('productImage').value = '';
+            document.getElementById('imageInput').value = '';
+            window.weWearPendingImageBlob = null;
+
+            await refreshStore();
+        } catch (error) {
+            console.error(error);
+            showMessage(`❌ ${error.message || 'Could not publish product'}`);
+        }
     }
 
-    function deleteProduct(id) {
-        if (confirm('Delete this product?')) {
-            products = products.filter(p => p.id !== id);
-            localStorage.setItem('we_wear_products', JSON.stringify(products));
-            showMessage('✅ Product deleted instantly!');
-            
-            loadFromStorage();
-            loadProducts();
-            updateDashboard();
-            displayAllProducts();
-            displayInventoryPage();
+    async function deleteProduct(id) {
+        if (!isAdminLoggedIn || !confirm('Delete this product?')) return;
+
+        const { error } = await supabaseClient.from('products').delete().eq('id', id);
+
+        if (error) {
+            showMessage(`❌ ${error.message}`);
+            return;
         }
+
+        showMessage('✅ Product deleted!');
+        await refreshStore();
     }
 
     function loadProducts() {
         const tbody = document.getElementById('productsTable');
+        if (!tbody) return;
         tbody.innerHTML = '';
+
+        if (!products.length) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#999;padding:30px;">No products yet</td></tr>';
+            return;
+        }
 
         products.forEach(product => {
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td>${product.name}</td>
+                <td>${escapeHTML(product.name)}</td>
                 <td>₨${product.price.toLocaleString()}</td>
-                <td>${product.category.charAt(0).toUpperCase() + product.category.slice(1)}</td>
+                <td>${escapeHTML(product.category.charAt(0).toUpperCase() + product.category.slice(1))}</td>
                 <td>${product.stock}</td>
                 <td>
-                    <button class="btn-small" onclick="editProduct(${product.id})">Edit</button>
-                    <button class="btn-small btn-delete" onclick="deleteProduct(${product.id})">Delete</button>
-                </td>
-            `;
+                    <button class="btn-small" onclick="editProduct('${product.id}')">Edit</button>
+                    <button class="btn-small btn-delete" onclick="deleteProduct('${product.id}')">Delete</button>
+                </td>`;
             tbody.appendChild(row);
         });
     }
 
-    function editProduct(id) {
-        const product = products.find(p => p.id === id);
-        if (product) {
-            document.getElementById('productName').value = product.name;
-            document.getElementById('productPrice').value = product.price;
-            document.getElementById('productStock').value = product.stock;
-            document.getElementById('productCategory').value = product.category.charAt(0).toUpperCase() + product.category.slice(1);
-            document.getElementById('productSize').value = product.size;
-            document.getElementById('productCondition').value = product.condition;
-            document.getElementById('productDescription').value = product.description;
-            document.getElementById('productImage').value = product.image;
-            
-            showAdminSection('addProduct');
-        }
+    async function editProduct(id) {
+        const product = products.find(p => String(p.id) === String(id));
+        if (!product) return;
+
+        document.getElementById('productName').value = product.name;
+        document.getElementById('productPrice').value = product.price;
+        document.getElementById('productStock').value = product.stock;
+        document.getElementById('productCategory').value = product.category.charAt(0).toUpperCase() + product.category.slice(1);
+        document.getElementById('productSize').value = product.size;
+        document.getElementById('productCondition').value = product.condition;
+        document.getElementById('productDescription').value = product.description || '';
+
+        // This is intentionally an edit helper: publishing the form creates a new product.
+        // Existing product editing is kept simple until an Edit modal is added.
+        showAdminSection('addProduct');
+        showMessage('✏️ Product loaded. Change the fields and publish as a new listing.');
     }
 
     // ===== DISPLAY PRODUCTS =====
     async function displayProductsByCategory(category) {
-        const gridId = category + 'Grid';
-        const grid = document.getElementById(gridId);
+        const grid = document.getElementById(category + 'Grid');
         if (!grid) return;
 
         grid.innerHTML = '';
-        const filtered = products.filter(p => p.category === category);
+        const filtered = products.filter(p => p.category === category && p.stock > 0);
 
-        if (filtered.length === 0) {
-            grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; padding: 40px; color: #999;">No products in this category yet</p>';
+        if (!filtered.length) {
+            grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;padding:40px;color:#999;">No products in this category yet</p>';
             return;
         }
 
         for (const product of filtered) {
-            const card = await createProductCard(product);
-            grid.appendChild(card);
+            grid.appendChild(await createProductCard(product));
         }
     }
 
     async function displayAllProducts() {
-        displayProductsByCategory('shirts');
-        displayProductsByCategory('pants');
-        displayProductsByCategory('shoes');
-        displayProductsByCategory('drips');
+        await Promise.all([
+            displayProductsByCategory('shirts'),
+            displayProductsByCategory('pants'),
+            displayProductsByCategory('shoes'),
+            displayProductsByCategory('drips')
+        ]);
     }
 
     async function createProductCard(product) {
         const card = document.createElement('div');
         card.className = 'product-card';
-        let imageSrc = product.image;
-        if (typeof imageSrc === 'string' && imageSrc.startsWith('cache://')) {
-            try {
-                const cache = await caches.open('wewear-product-images-v2');
-                const response = await cache.match('/product-image/' + imageSrc.slice(8));
-                if (response) imageSrc = await response.text();
-            } catch (_) {}
-        }
+
+        const imageSrc = product.image || '';
         card.innerHTML = `
             <div class="product-image-container">
-                <img src="${imageSrc}" alt="${product.name}" class="product-image" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22280%22 height=%22280%22%3E%3Crect fill=%22%23f5f5f5%22 width=%22280%22 height=%22280%22/%3E%3C/svg%3E'">
+                <img src="${escapeHTML(imageSrc)}" alt="${escapeHTML(product.name)}" class="product-image"
+                     onerror="this.style.objectFit='contain';this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22280%22 height=%22280%22%3E%3Crect fill=%22%23f5f5f5%22 width=%22280%22 height=%22280%22/%3E%3C/svg%3E'">
                 ${product.stock === 1 ? '<div class="badge">ONE OF ONE</div>' : ''}
-                ${product.stock === 0 ? '<div class="badge sold">SOLD OUT</div>' : ''}
             </div>
             <div class="product-info">
-                <h3>${product.name}</h3>
+                <h3>${escapeHTML(product.name)}</h3>
                 <p class="product-price">₨${product.price.toLocaleString()}</p>
                 <div class="product-meta">
-                    <span>${product.size}</span>
-                    <span>${product.condition}</span>
+                    <span>${escapeHTML(product.size)}</span>
+                    <span>${escapeHTML(product.condition)}</span>
                 </div>
-                <button class="btn-add btn-cart" data-product-id="${product.id}" ${product.stock === 0 ? 'disabled' : ''} style="margin-bottom: 8px;">
-                    ${product.stock === 0 ? 'Sold Out' : 'Add to Cart'}
-                </button>
-                <button class="btn-add btn-buy" data-product-id="${product.id}" data-product-name="${product.name}" data-product-price="${product.price}" data-product-size="${product.size}" data-product-condition="${product.condition}" ${product.stock === 0 ? 'disabled' : ''} style="background: #ff9800; margin-bottom: 0;">
-                    ${product.stock === 0 ? 'Sold Out' : 'Buy Now'}
-                </button>
-            </div>
-        `;
+                <button class="btn-add btn-cart" data-product-id="${escapeHTML(product.id)}" style="margin-bottom:8px;">Add to Cart</button>
+                <button class="btn-add btn-buy" data-product-id="${escapeHTML(product.id)}" style="background:#ff9800;margin-bottom:0;">Buy Now</button>
+            </div>`;
 
-        // Add event listeners
-        const cartBtn = card.querySelector('.btn-cart');
-        const buyBtn = card.querySelector('.btn-buy');
-
-        cartBtn.addEventListener('click', function(e) {
+        card.querySelector('.btn-cart').addEventListener('click', e => {
             e.preventDefault();
-            const pId = this.getAttribute('data-product-id');
-            addProductToCart(parseInt(pId));
+            addProductToCart(product.id);
         });
 
-        buyBtn.addEventListener('click', function(e) {
+        card.querySelector('.btn-buy').addEventListener('click', e => {
             e.preventDefault();
-            const pId = this.getAttribute('data-product-id');
-            const pName = this.getAttribute('data-product-name');
-            const pPrice = this.getAttribute('data-product-price');
-            const pSize = this.getAttribute('data-product-size');
-            const pCondition = this.getAttribute('data-product-condition');
-            buyNowProduct(parseInt(pId));
+            buyNowProduct(product.id);
         });
 
         return card;
     }
 
     // ===== ORDERS =====
-    function loadOrders() {
+    async function loadOrders() {
         const ordersList = document.getElementById('ordersList');
+        if (!ordersList) return;
         ordersList.innerHTML = '';
 
-        if (orders.length === 0) {
-            ordersList.innerHTML = '<p style="color: #999; text-align: center; padding: 40px;">No orders yet</p>';
+        if (!orders.length) {
+            ordersList.innerHTML = '<p style="color:#999;text-align:center;padding:40px;">No orders yet</p>';
             return;
         }
 
         orders.forEach(order => {
+            const items = Array.isArray(order.items) ? order.items : [];
+            const itemNames = items.map(i => `${escapeHTML(i.name)} × ${Number(i.quantity || 1)}`).join(', ');
+
             const card = document.createElement('div');
             card.className = 'order-card';
             card.innerHTML = `
                 <div class="order-header">
                     <div>
-                        <h4>${order.items ? order.items.map(i => i.name).join(', ') : (order.product || 'Order')}</h4>
-                        <p>${order.customerName || ''} • ${order.customerPhone || ''}</p>
+                        <h4>Order ${escapeHTML(order.id)}</h4>
+                        <p>${escapeHTML(order.customer_name || '')} • ${escapeHTML(order.customer_phone || '')}</p>
                     </div>
                     <div>
-                        <select onchange="updateOrderStatus(${order.id}, this.value)">
-                            <option value="Pending" ${order.status === 'Pending' ? 'selected' : ''}>Pending</option>
-                            <option value="Confirmed" ${order.status === 'Confirmed' ? 'selected' : ''}>Confirmed</option>
-                            <option value="Shipped" ${order.status === 'Shipped' ? 'selected' : ''}>Shipped</option>
-                            <option value="Delivered" ${order.status === 'Delivered' ? 'selected' : ''}>Delivered</option>
+                        <select onchange="updateOrderStatus('${escapeHTML(order.id)}', this.value)">
+                            ${['Pending','Confirmed','Shipped','Delivered','Cancelled'].map(status =>
+                                `<option value="${status}" ${order.status === status ? 'selected' : ''}>${status}</option>`
+                            ).join('')}
                         </select>
                     </div>
                 </div>
-                <p style="font-size: 12px; margin-bottom: 8px;"><strong>Total:</strong> ₨${Number(order.total || order.price || 0).toLocaleString()}</p>
-                <p style="font-size: 12px; margin-bottom: 8px;"><strong>Address:</strong> ${order.customerAddress}</p>
-                <p style="font-size: 12px;"><strong>Items:</strong> ${order.items ? order.items.map(i => `${i.name} × ${i.quantity}`).join(', ') : `${order.product || ''} × ${order.quantity || 1}`}</p>
-            `;
+                <p style="font-size:12px;margin-bottom:8px;"><strong>Total:</strong> ₨${Number(order.total || 0).toLocaleString()}</p>
+                <p style="font-size:12px;margin-bottom:8px;"><strong>Address:</strong> ${escapeHTML(order.customer_address || '')}, ${escapeHTML(order.customer_city || '')}</p>
+                <p style="font-size:12px;margin-bottom:8px;"><strong>Email:</strong> ${escapeHTML(order.customer_email || '')}</p>
+                <p style="font-size:12px;"><strong>Items:</strong> ${itemNames}</p>`;
             ordersList.appendChild(card);
         });
     }
 
-    function updateOrderStatus(orderId, status) {
-        const order = orders.find(o => o.id === orderId);
-        if (order) {
-            order.status = status;
-            localStorage.setItem('we_wear_orders', JSON.stringify(orders));
-            showMessage('✅ Order status updated!');
-            loadOrders();
+    async function updateOrderStatus(orderId, status) {
+        if (!isAdminLoggedIn) return;
+
+        const { error } = await supabaseClient
+            .from('orders')
+            .update({ status })
+            .eq('id', orderId);
+
+        if (error) {
+            showMessage(`❌ ${error.message}`);
+            return;
         }
+
+        showMessage('✅ Order status updated!');
+        await loadOrdersFromSupabase();
+        loadOrders();
     }
 
     // ===== DASHBOARD =====
