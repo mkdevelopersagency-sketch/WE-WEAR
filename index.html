@@ -704,7 +704,7 @@
 <!-- NAVIGATION -->
 <nav class="top-nav">
     <div class="nav-container">
-        <div class="logo" onclick="goToPage('home')">WE WEAR</div>
+        <div class="logo" onclick="goToPage('inventory')">WE WEAR</div>
         <div class="nav-buttons">
             <button class="nav-btn active" onclick="goToPage('inventory')" data-page="inventory">Inventory</button>
             <button class="nav-btn" onclick="goToPage('shirts')" data-page="shirts">Shirts</button>
@@ -737,7 +737,7 @@
 </div>
 
 <!-- SHIRTS PAGE -->
-<div id="shirtsPage" class="page active">
+<div id="shirtsPage" class="page">
     <div class="page-container">
         <h1>Shirts</h1>
         <div id="shirtsGrid" class="product-grid"></div>
@@ -986,11 +986,18 @@
     const ADMIN_PASSWORD = 'Thrift.2026';
 
     let isAdminLoggedIn = false;
-    let products = JSON.parse(localStorage.getItem('we_wear_products')) || [];
-    let orders = JSON.parse(localStorage.getItem('we_wear_orders')) || [];
+    let products = [];
+    let orders = [];
+
+    // ===== LOAD FROM STORAGE =====
+    function loadFromStorage() {
+        products = JSON.parse(localStorage.getItem('we_wear_products')) || [];
+        orders = JSON.parse(localStorage.getItem('we_wear_orders')) || [];
+    }
 
     // Initialize
     function init() {
+        loadFromStorage();
         displayAllProducts();
         displayInventoryPage();
         updateDashboard();
@@ -1023,6 +1030,7 @@
             isAdminLoggedIn = true;
             document.getElementById('loginForm').style.display = 'none';
             document.getElementById('adminDashboard').style.display = 'block';
+            loadFromStorage();
             updateDashboard();
             loadProducts();
             loadOrders();
@@ -1056,7 +1064,6 @@
         const grid = document.getElementById('inventoryGrid');
         grid.innerHTML = '';
         
-        // Get all products from all categories
         const allProducts = products.filter(p => p.stock > 0);
         
         if (allProducts.length === 0) {
@@ -1110,12 +1117,10 @@
             document.getElementById('productImage').value = base64;
             document.getElementById('previewImg').src = base64;
             document.getElementById('imagePreview').style.display = 'block';
-            showMessage('Image uploaded! Ready to publish.');
+            showMessage('✅ Image uploaded! Ready to publish.');
         };
         reader.readAsDataURL(file);
     }
-
-
 
     function showMessage(text) {
         const banner = document.getElementById('messageBanner');
@@ -1159,7 +1164,6 @@
             return;
         }
 
-        // Collect customer details
         const customerName = prompt('Enter your name:');
         if (!customerName) return;
 
@@ -1169,7 +1173,6 @@
         const customerAddress = prompt('Enter your delivery address:');
         if (!customerAddress) return;
 
-        // Create order message
         const orderMessage = `
 🛍️ **NEW ORDER - WE WEAR**
 
@@ -1191,27 +1194,26 @@
 📅 Time: ${new Date().toLocaleString()}
         `.trim();
 
-        // WhatsApp message (convert to international format)
         const whatsappNumber = '923558572688';
         const whatsappMessage = encodeURIComponent(orderMessage);
         const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${whatsappMessage}`;
 
-        // Email message
         const emailSubject = `New Order - ${productName}`;
         const emailBody = encodeURIComponent(orderMessage);
         const emailUrl = `mailto:wewearadmin@gmail.com?subject=${encodeURIComponent(emailSubject)}&body=${emailBody}`;
 
-        // Open WhatsApp in new tab
         window.open(whatsappUrl, '_blank');
         
-        // Open email in new tab
         setTimeout(() => {
             window.open(emailUrl, '_blank');
         }, 500);
 
-        // Save order locally
-        let orders = JSON.parse(localStorage.getItem('we_wear_orders')) || [];
-        orders.push({
+        loadFromStorage();
+        product.stock -= 1;
+        localStorage.setItem('we_wear_products', JSON.stringify(products));
+
+        let updatedOrders = JSON.parse(localStorage.getItem('we_wear_orders')) || [];
+        updatedOrders.push({
             id: Date.now(),
             product: productName,
             price: productPrice,
@@ -1223,13 +1225,12 @@
             status: 'Pending',
             created_at: new Date().toISOString()
         });
-        localStorage.setItem('we_wear_orders', JSON.stringify(orders));
-
-        // Decrease stock
-        product.stock -= 1;
-        localStorage.setItem('we_wear_products', JSON.stringify(products));
+        localStorage.setItem('we_wear_orders', JSON.stringify(updatedOrders));
         
         showMessage('✅ Order sent! Check WhatsApp & Email');
+        loadFromStorage();
+        displayAllProducts();
+        displayInventoryPage();
     }
 
     // ===== PRODUCTS =====
@@ -1251,12 +1252,14 @@
 
         products.push(product);
         localStorage.setItem('we_wear_products', JSON.stringify(products));
-        showMessage('Product added successfully!');
+        showMessage('✅ Product published instantly!');
 
         document.getElementById('productForm').reset();
         document.getElementById('imagePreview').style.display = 'none';
         document.getElementById('productImage').value = '';
         document.getElementById('imageInput').value = '';
+        
+        loadFromStorage();
         loadProducts();
         updateDashboard();
         displayAllProducts();
@@ -1267,7 +1270,9 @@
         if (confirm('Delete this product?')) {
             products = products.filter(p => p.id !== id);
             localStorage.setItem('we_wear_products', JSON.stringify(products));
-            showMessage('Product deleted!');
+            showMessage('✅ Product deleted instantly!');
+            
+            loadFromStorage();
             loadProducts();
             updateDashboard();
             displayAllProducts();
@@ -1343,7 +1348,7 @@
         card.className = 'product-card';
         card.innerHTML = `
             <div class="product-image-container">
-                <img src="${product.image}" alt="${product.name}" class="product-image" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22280%22 height=%22280%22%3E%3Crect fill=%22%23f5f5f5%22 width=%22280%22 height=%22280%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23999%22%3EImage not available%3C/text%3E%3C/svg%3E'">
+                <img src="${product.image}" alt="${product.name}" class="product-image" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22280%22 height=%22280%22%3E%3Crect fill=%22%23f5f5f5%22 width=%22280%22 height=%22280%22/%3E%3C/svg%3E'">
                 ${product.stock === 1 ? '<div class="badge">ONE OF ONE</div>' : ''}
                 ${product.stock === 0 ? '<div class="badge sold">SOLD OUT</div>' : ''}
             </div>
@@ -1381,7 +1386,7 @@
             card.innerHTML = `
                 <div class="order-header">
                     <div>
-                        <h4>${order.orderNumber}</h4>
+                        <h4>${order.product}</h4>
                         <p>${order.customerName} • ${order.customerPhone}</p>
                     </div>
                     <div>
@@ -1393,9 +1398,9 @@
                         </select>
                     </div>
                 </div>
-                <p style="font-size: 12px; margin-bottom: 8px;"><strong>Total:</strong> ₨${order.total.toLocaleString()}</p>
-                <p style="font-size: 12px; margin-bottom: 8px;"><strong>Address:</strong> ${order.address}, ${order.city}</p>
-                <p style="font-size: 12px;"><strong>Items:</strong> ${order.items.map(item => `${item.name} × ${item.quantity}`).join(', ')}</p>
+                <p style="font-size: 12px; margin-bottom: 8px;"><strong>Total:</strong> ₨${order.price.toLocaleString()}</p>
+                <p style="font-size: 12px; margin-bottom: 8px;"><strong>Address:</strong> ${order.customerAddress}</p>
+                <p style="font-size: 12px;"><strong>Item:</strong> ${order.product} × ${order.quantity}</p>
             `;
             ordersList.appendChild(card);
         });
@@ -1406,7 +1411,7 @@
         if (order) {
             order.status = status;
             localStorage.setItem('we_wear_orders', JSON.stringify(orders));
-            showMessage('Order status updated!');
+            showMessage('✅ Order status updated!');
             loadOrders();
         }
     }
