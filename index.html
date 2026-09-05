@@ -1124,6 +1124,114 @@
         setTimeout(() => banner.classList.remove('show'), 3000);
     }
 
+    // ===== CART & BUY NOW =====
+    function addProductToCart(productId, event) {
+        event.preventDefault();
+        const product = products.find(p => p.id === productId);
+        
+        if (!product) return;
+
+        let cart = JSON.parse(localStorage.getItem('we_wear_cart')) || [];
+        const existingItem = cart.find(item => item.id === productId);
+
+        if (existingItem) {
+            existingItem.quantity += 1;
+        } else {
+            cart.push({
+                id: product.id,
+                name: product.name,
+                price: product.price,
+                size: product.size,
+                condition: product.condition,
+                image: product.image,
+                quantity: 1
+            });
+        }
+
+        localStorage.setItem('we_wear_cart', JSON.stringify(cart));
+        showMessage('✅ Added to cart!');
+    }
+
+    function buyNowProduct(productId, productName, productPrice, productSize, productCondition) {
+        const product = products.find(p => p.id === productId);
+        if (!product || product.stock === 0) {
+            showMessage('❌ Product not available');
+            return;
+        }
+
+        // Collect customer details
+        const customerName = prompt('Enter your name:');
+        if (!customerName) return;
+
+        const customerPhone = prompt('Enter your phone number:');
+        if (!customerPhone) return;
+
+        const customerAddress = prompt('Enter your delivery address:');
+        if (!customerAddress) return;
+
+        // Create order message
+        const orderMessage = `
+🛍️ **NEW ORDER - WE WEAR**
+
+📦 **PRODUCT DETAILS:**
+• Name: ${productName}
+• Price: ₨${productPrice.toLocaleString()}
+• Size: ${productSize}
+• Condition: ${productCondition}
+• Quantity: 1
+
+👤 **CUSTOMER DETAILS:**
+• Name: ${customerName}
+• Phone: ${customerPhone}
+• Address: ${customerAddress}
+
+💰 **PAYMENT:** Cash on Delivery
+🚚 **DELIVERY FEE:** ₨300
+
+📅 Time: ${new Date().toLocaleString()}
+        `.trim();
+
+        // WhatsApp message (convert to international format)
+        const whatsappNumber = '923558572688';
+        const whatsappMessage = encodeURIComponent(orderMessage);
+        const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${whatsappMessage}`;
+
+        // Email message
+        const emailSubject = `New Order - ${productName}`;
+        const emailBody = encodeURIComponent(orderMessage);
+        const emailUrl = `mailto:wewearadmin@gmail.com?subject=${encodeURIComponent(emailSubject)}&body=${emailBody}`;
+
+        // Open WhatsApp in new tab
+        window.open(whatsappUrl, '_blank');
+        
+        // Open email in new tab
+        setTimeout(() => {
+            window.open(emailUrl, '_blank');
+        }, 500);
+
+        // Save order locally
+        let orders = JSON.parse(localStorage.getItem('we_wear_orders')) || [];
+        orders.push({
+            id: Date.now(),
+            product: productName,
+            price: productPrice,
+            size: productSize,
+            quantity: 1,
+            customerName: customerName,
+            customerPhone: customerPhone,
+            customerAddress: customerAddress,
+            status: 'Pending',
+            created_at: new Date().toISOString()
+        });
+        localStorage.setItem('we_wear_orders', JSON.stringify(orders));
+
+        // Decrease stock
+        product.stock -= 1;
+        localStorage.setItem('we_wear_products', JSON.stringify(products));
+        
+        showMessage('✅ Order sent! Check WhatsApp & Email');
+    }
+
     // ===== PRODUCTS =====
     function addProduct(e) {
         e.preventDefault();
@@ -1246,8 +1354,11 @@
                     <span>${product.size}</span>
                     <span>${product.condition}</span>
                 </div>
-                <button class="btn-add" ${product.stock === 0 ? 'disabled' : ''}>
-                    ${product.stock === 0 ? 'Sold Out' : 'Add to Bag'}
+                <button class="btn-add" ${product.stock === 0 ? 'disabled' : ''} onclick="addProductToCart(${product.id}, event)" style="margin-bottom: 8px;">
+                    ${product.stock === 0 ? 'Sold Out' : 'Add to Cart'}
+                </button>
+                <button class="btn-add" ${product.stock === 0 ? 'disabled' : ''} onclick="buyNowProduct(${product.id}, '${product.name}', ${product.price}, '${product.size}', '${product.condition}')" style="background: #ff9800; margin-bottom: 0;">
+                    ${product.stock === 0 ? 'Sold Out' : 'Buy Now'}
                 </button>
             </div>
         `;
