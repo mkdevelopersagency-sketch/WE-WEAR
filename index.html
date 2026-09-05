@@ -1245,11 +1245,13 @@
     }
 
     // ===== CART & BUY NOW =====
-    function addProductToCart(productId, event) {
-        event.preventDefault();
+    function addProductToCart(productId) {
         const product = products.find(p => p.id === productId);
         
-        if (!product) return;
+        if (!product) {
+            showMessage('❌ Product not found');
+            return;
+        }
 
         let cart = JSON.parse(localStorage.getItem('we_wear_cart')) || [];
         const existingItem = cart.find(item => item.id === productId);
@@ -1601,14 +1603,35 @@ ${cartDetails}
                     <span>${product.size}</span>
                     <span>${product.condition}</span>
                 </div>
-                <button class="btn-add" ${product.stock === 0 ? 'disabled' : ''} onclick="addProductToCart(${product.id}, event)" style="margin-bottom: 8px;">
+                <button class="btn-add btn-cart" data-product-id="${product.id}" ${product.stock === 0 ? 'disabled' : ''} style="margin-bottom: 8px;">
                     ${product.stock === 0 ? 'Sold Out' : 'Add to Cart'}
                 </button>
-                <button class="btn-add" ${product.stock === 0 ? 'disabled' : ''} onclick="buyNowProduct(${product.id}, '${product.name}', ${product.price}, '${product.size}', '${product.condition}')" style="background: #ff9800; margin-bottom: 0;">
+                <button class="btn-add btn-buy" data-product-id="${product.id}" data-product-name="${product.name}" data-product-price="${product.price}" data-product-size="${product.size}" data-product-condition="${product.condition}" ${product.stock === 0 ? 'disabled' : ''} style="background: #ff9800; margin-bottom: 0;">
                     ${product.stock === 0 ? 'Sold Out' : 'Buy Now'}
                 </button>
             </div>
         `;
+
+        // Add event listeners
+        const cartBtn = card.querySelector('.btn-cart');
+        const buyBtn = card.querySelector('.btn-buy');
+
+        cartBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const pId = this.getAttribute('data-product-id');
+            addProductToCart(parseInt(pId));
+        });
+
+        buyBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const pId = this.getAttribute('data-product-id');
+            const pName = this.getAttribute('data-product-name');
+            const pPrice = this.getAttribute('data-product-price');
+            const pSize = this.getAttribute('data-product-size');
+            const pCondition = this.getAttribute('data-product-condition');
+            buyNowProduct(parseInt(pId), pName, parseFloat(pPrice), pSize, pCondition);
+        });
+
         return card;
     }
 
